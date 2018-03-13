@@ -1,0 +1,263 @@
+---
+title: ""
+output: pdf_document
+
+---  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment="", fig.align="center",eval=TRUE, fig.width = 5, fig.width = 6)
+```
+\begin{center}
+\scriptsize{Crowdstorming Gabriele Minniti}  
+\end{center}  
+\  
+\  
+
+\begin{center}
+\LARGE\textbf{Arbitri, cartellini rossi e colore della pelle,}
+\end{center}
+\begin{center}
+\LARGE\textbf{qual è la relazione?}
+\end{center}
+ 
+
+\   
+
+\begin{center}
+\Large\textit{Gabriele Minniti}  
+\end{center}
+
+
+\begin{center}
+\large\textit{matr. 763917}
+\end{center}  
+
+\  
+\  
+\  
+  
+\  
+\begin{center}
+\large\textbf{ABSTRACT}
+\end{center}
+
+\  
+
+Il razzismo è un problema piuttosto attuale relativo alle tifoserie di diverse squadre di calcio. Si pensi ai fischi a Balotelli, oppure agli insulti a Zorò. É ragionevole domandarsi se anche gli arbitri sono affetti da questo distorsione, che in termini pratici potrebbe risultare molto più palese con un cartellino rosso piuttosto che un coro di una tifoseria. L'obiettivo dell'analisi è di capire se gli arbitri sono più propensi a dare cartellini rossi ad un giocatore con la pelle scura piuttosto che ad uno con la carnagione chiarta. Il Crowdstorming dataset si compone dei 2052 calciatori che hanno preso parte a quattro fra i maggiori campionati calcistici europei nella stagione 2012/2013. Mediante una mistura di un modello di regressione di Poisson ed un modello ad effetti casuali si evince che i dati supportano l'ipotesi di professionalità degli arbitri, senza evidenziare questa tendenza a punire maggiormente mediante rossi i giocatori di carnagione scura piuttosto che chiara.  
+É altersì vero che ci sono delle ragionevoli considerazioni da fare relative alla qualità dei dati e alla robustezza delle risposte che si possono ottenere
+
+
+\  
+
+\  
+
+\begin{center}
+\normalsize\textbf{Abstract in una frase}  
+\end{center}   
+
+\begin{center}
+\normalsize{Gli arbitri sono più propensi a dare cartellii rossi ai giocatori con la pelle scura?}
+\end{center}  
+  
+\  
+  
+\  
+
+\begin{center}
+\large\textbf{Esplorazione dei dati e prime conclusioni}
+\end{center}  
+
+```{r include=FALSE}
+rm(list=ls())
+f_path ='/Users/gabriele.minniti/Desktop/Assignment_solari/data/ready_dataset.csv'
+prova = '../data/arbiti_razzisti.csv'
+data <- read.csv(file=f_path) #bella li! dati caricati
+```
+  
+\  
+  
+Il dataset si compone di $146\,028$ diadi composte da una coppia $arbitro\sim giocatore$. Sono stati presi come riferimento i giocatori delle maggiori divisioni di Francia (**Ligue 1**), Germania (**Bundersliga**), Spagna (**Primera Diviísion**) ed Inghilterra (**Premier League**), e per ciascuno è stata costruita la loro *storia calcistica* ovvero tutti gli arbitri che sono stati incontrati durante la carriera. Questo dato senza un'approfondita indagine esplorativa potrebbe sembrare parecchio particolare, poichè i giocatori sono $2\,053$  mentre gli arbitri sono $3\,147$.  
+
+In ciascuna delle 146.028 righe è rappresentata una diade arbitro $\sim$ giocatore con i dati di entrambi i soggetti. Per il giocatore ci sono sia dati di natura anagrafica: come nome, cognome, data di nascita, peso ed altezza; sia dati di natura calcistica quali numero di partite vinte, perse o pareggiate, numero di cartellini gialli, doppi gialli, cartellini rossi, il numero di partite che sono state disputate dalla coppia e due valutazioni del colore della pelle. Per quanto riguarda l'arbitro invece è stato riportato un numero (per mantenere l'anonimato), la nazione di provenientza, e due vettori di parametri relativi alla propensione al razzismo della nazione di appartenenza dell'arbitro. Rispettivamente si identificano come IAT ed Exp, e per ciascuno ci sono tre colonne: media, numero ed errore standanrd.  
+\  
+
+```{r, include=FALSE}
+data_columns = colnames(data)
+```
+
+```{r}
+data_columns
+```
+  
+\  
+
+$\bullet$ Sono state eliminate le variabili nome esteso di ciascun giocatore (variabile **player**), e **photoID**, poichè non utili ai fini dell'analisi.  
+$\\$  
+$\\$
+
+$\bullet$ Il dataset presenta un grande numero di missing values: NA.  
+
+>Le variabili affette da questo problema:  
+1) reater1 e reater2: si tratta delle due valutazioni del colore della pelle, intaccate da $21\,407$ NA  
+2) peso e altezza: contavano 753 valori mancanti  
+3) i valori relativi a IAT ed Exp: con 153 missing  
+4) le posizioni: con 8258 NA  
+\  
+
+$\\$
+$\bullet$ Si tratta di un totale di $30\,221\ missing\ values$. Si è optato per eliminare le righe corrispondenti poichè non è stato trovato un modo ragionevole per imputare i missing.  
+$\\$  
+$\\$
+$\bullet$ Dalle indagini esplorative si evince che i giocatori fanno parte di $118$ squadre delle massime divisioni di Francia, Inghilterra, Spagna e Germania. Di seguito sono riportate le percentuali con le quali i giocatori si distribuiscono nei vari campionati.
+
+```{r}
+round(table(data$leagueCountry)/nrow(data), 2) 
+```
+  
+$\\$  
+$\\$ 
+
+$\bullet$ Ci sono dodici posizioni in campo, è ragionevole pensare che ciascuna per sua natura, sia più o meno soggetta a fare più o meno falli, e di conseguenza a prendere più cartellini. Per esempio un portiere raramente viene ammonito o addirittura espulso, rispetto ad un difensore che si trova alle strette è portato naturalmente portato a commettere più falli.  
+In seguito questa variabile verrà accorpata in quattro soli livelli al posto che dodici: *portiere*, *difensore*, *centrocampista* e *attaccante*. Di seguito viene riportato il grafico relativo alle posizioni dei giocatori rappresentati nel dataset.  
+
+
+$\\$  
+$\\$
+$\bullet$ Com'è possibile vedere per tutte le righe del dataset il **numero di cartellini rossi** è di granlunga **inferiore** al numero di cartellini non assegnati. Ci sono rari casi in cui una diade l'arbitro assegna due cartellini al posto che uno solo. 
+
+```{r echo=FALSE}
+barplot(table(data$redCards), main='numero di cartellini rossi', xlab="numero rossi", ylab="frequenza assoluta", ylim=c(0, 160000), 
+     col=c("coral", 'red', 'blue'))
+text(table(data$redCards), c("144219", "1784", "25"), pos=3)
+```
+
+
+**E' ragionevole pensare che i cartellini rossi possano essere definiti come eventi rari.**  
+$\\$
+$\\$
+
+$\bullet$ Il **colore della pelle** si costituisce come media fra i due giudizi che sono stati assegnati a ciscun giocatore. 
+
+```{r echo=FALSE}
+score <- data$score
+barplot(table(score), col=gray.colors(10, start=0.9, end=0.3, gamma = 1.5 ), main=
+          "Colori della pelle dei giocatori", xlab="tonalità", ylab = "numero di giocatori")
+```
+
+
+
+
+É possibile notare che il numero di giocatori con la pelle chiara è decisamene più alto rispetto al numero di giocatori con la pelle scura. Questo è un elemento di difficoltà per la spiegazione della relazione che ci si è posti come obiettivo.  
+\  
+\  
+\begin{center}
+\Large\textbf{Enrichment del dataset e trasformazioni sulle variabili}
+\end{center}  
+\  
+Al fine di ottenere un'analisi più accurata sono state create delle nuove variabili partendo da quelle esistenti nel dataset.  
+$\\$  
+$\\$
+$\bullet$ L'**IMC** o **Indice di Massa Corporea** è una dato biomedico che racchiude al suo interno le variabili **peso** e **altezza**, e da un'idea sul *peso forma* dei giocatori.  
+$$\large{Indice\ di\ Massa\ Corporea\ =} \frac{peso}{altezza^{2}}$$
+
+  
+```{r echo=FALSE}
+hist(data$IBM, main='Istogramma della massa corporea', xlab = 'Indice di massa corporea', ylab ='frequenza', freq = FALSE)
+abline(v=c(18.5, 24.99), col='red', lwd=3)
+abline(v=29.99, col='green', lwd=2, lty=2)
+x <- seq(1:length(data$IBM))
+curve(dnorm(x, mean(data$IBM), sd=sqrt(var(data$IBM))), from=15, to=28, col="coral", add=TRUE, lwd=2)
+```
+
+É possibile notare che quasi la totalità dei giocatori ha un peso-forma ideale, i pochi soggetti che eccedono la barra superiore che si trova in prossimità del valore $25$ sono leggermente in sovrappeso. Questo dato potrebbe inficiare sulla *fallosità* dei calciatori di cui sopra, pertante verrà incluso nei modelli finali al fine di descrivere una parte importante delle caratteristiche fisiche del giocatore.
+I dati realtivi al IMC hanno distribuzione normale.  
+$\\$  
+$\\$
+
+$\bullet$ Partendo dalla variabile *data di nascita* è stata costruita la variabile **età**, la quale assume un peso rilevante ai fini dell'analisi, poichè i soggetti più *anziani* avranno visto più arbitri nella loro carriera, e di conseguenza avranno la probabilità di aver preso dei cartellini rossi di molto maggiore rispetto ai giocatori che sono in nelle massime divisioni da pochi anni.  
+
+```{r echo=FALSE}
+hist(data$ages, main="istogramma delle età", xlim= c(20, 50), freq = FALSE, xlab="età", ylab="frequenza")
+IC <- c(mean(data$ages) - 1.96 * sqrt(var(data$ages)/length(data$ages)), mean(data$ages) + 1.96 * sqrt(var(data$ages)/length(data$ages)))
+abline(h=IC, col="red", lwd=2, lty =2)
+x=seq(1:length(data$ages))
+curve(dnorm(x, mean = mean(data$ages), sd=sqrt(var(data$ages))), add=TRUE, col="coral", lwd=2, lty=3)
+```
+
+
+  
+
+È possibile notare come le età di distribuiscano in modo normale.   
+$\\$ 
+$\\$
+$\bullet$ Un'altro elemento importante ai fini dell'analisi è la **posizione.** Essa infatti è codificarta mediante dodici valori. Sono state accorpate le diverse posizioni in ruoli *semplici*:  
+
+1) Portiere ~ **goalkeeper**  
+
+2) Difensori ~ **dif**  
+
+3) Centrocampisti ~ **mid**   
+
+4) Attaccanti ~ **att**    
+
+
+Il ruolo del giocatore è molto importante poichè un portiere avrà meno probabilità di prendere un cartellino rosso rispetto ad un difensore.
+
+```{r}
+round(table(data$group_pos)/length(data$group_pos), 2)
+```
+
+$\\$  
+$\\$  
+$\\$
+\begin{center}
+\Large\textbf{Modello}
+\end{center}  
+$\\$  
+
+Il modello che è stato stimato si tratta di una **Regressione di Poisson con effetti casuali**  
+$\\$
+BLA BLA BLA  
+$\\$
+
+
+```{r, echo=FALSE}
+mod2 <- readRDS("/Users/gabriele.minniti/Desktop/Assignment_solari/model_1.rds")
+```
+
+```{r}
+summary(mod2)
+```
+
+
+$\\$
+
+BLA BLA BLA
+
+$\\$
+
+```{r}
+dati.red <- data[data$redCards > 0,]
+
+x <- table((data$score))
+y <- table((dati.red$score))
+
+null.probs <- x / sum(x)
+chi <- chisq.test(y,p=null.probs)
+print(chi)
+```
+
+```{r}
+print(data.frame(ratings=as.numeric(names(x)),expected=round(as.vector (chi$expected),1),observed=as.vector(chi$observed)))
+
+
+cols <- c("coral","green") 
+b <-barplot(t(cbind(chi$expected / chi$expected * 100,chi$observed / chi$expected * 100)),
+          beside=TRUE,
+          col=cols,
+          xlab="Skin-tone ratings (mean)",
+          ylab="Percent",
+          ylim=c(0,150),
+          main=paste("Red cards and skin-tones (n=",sum(chi$observed),").",sep=""))
+legend( "topright",legend=c("expected","observed"),fill=cols, cex = 0.6)
+```
+
