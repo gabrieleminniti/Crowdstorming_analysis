@@ -1,0 +1,385 @@
+---
+title: "Arbitri, colore della pelle, e cartellini rossi. Razzismo?"
+author: "Gabriele Minniti ~ matr. 763917"
+date: " "
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment="", fig.align="center",eval=TRUE)
+```  
+  
+- - -
+
+  
+
+
+<center> <h2> Abstract </h2> </center>  
+  
+<div id="justify">
+<p>È sufficiente immettere come parole chiave su google *calcio* e *razzismo* e sarà possibile vedere una serie tristemente lunga di vicende; da Boateng che abbandona il campo di gioco durante un'amichevole, fino a Etò che in segno di protesta per i cori razzisti, dopo aver segnato imitò le movenze di una scimmia in segno di protesta$_{(1)}$. Il nel mondo delle tifoserie ci sono stati un'enorme quantità di fenomeni come quello del terzino ivoriano del Messina il lontano 27 novembre 2005, che abbndonò la partita dopo più di mezz'ora di cori razziali. Il dubbio che può sorgere è se anche la classe arbitrale è affetta da questo triste fenomeno. Infatti l'analisi in questione mira a spiegare il legame fra gli arbitri  ed i giocatori con la pelle scura e le sanzioni più ecclatanti: i cartellini rossi. Il Crowdstorming dataset$_{(2)}$ si compone delle rilevazioni relative a giocatori con diversa tonalità di carnagione e arbitri. È necessario premettere che la qualità dei dati non è eccellente, pertanto le conclusioni risultano statisticamente significative per i campionati analizzati, ma non è possibile effettuare una generalizzazione a meno di un'importante opera di enrichement del dataset$_{(3)}$. Esso infatti è stato costruito riferendosi ai quattro maggiori campionati di calcio di: Francia, Inghilterra, Spagna e Germania, considerando i giocatori che vi hanno preso parte; per ciascuno è stata ricostruita la *storia calcistica* con tutte le partite giocate, tutti gli arbitri che sono stati incontrati ed il numero di cartellini presi da ciascuno. Dopo una vasta analisi esplorativa per capire il comportamento delle diverse variabili è stato stimato un *modello di Poisson ad effetti casuali* per spiegare il legame fra il numero di cartellini rossi e le diverse esplicative. Successivamente si è indagato rispetto alla significatività del colore della pelle come regressore, e la conclusione a cui si è giunti è che non c'è abbastanza evidenza empirica per rifiutare l'ipotesi che gli arbitri puniscano maggiormente i giocatori di colore, ripetto a quelli con la carnagione più chiara.</p>  
+</div>  
+
+  
+<center> <h4> Abstract in una frase </h4> </center>  
+
+Gli arbitri sono più propensi a dare cartellii rossi ai giocatori con la pelle scura?
+  
+- - -   
+  
+<center> <h3> Esplorazione dei dati e prime conclusioni </h3> </center>  
+```{r, include=FALSE}
+rm(list=ls())
+f_path ='/Users/gabriele.minniti/Desktop/Assignment_solari/data/clean_data.csv'
+data_sporchi <- read.csv(file=f_path) #bella li! dati caricati
+```  
+<p>
+Il dataset si compone di $146\,028$ diadi composte da una coppia $arbitro\sim giocatore$. Sono stati presi come riferimento i giocatori delle maggiori divisioni di Francia (**Ligue 1**), Germania (**Bundersliga**), Spagna (**Primera Divísion**) ed Inghilterra (**Premier League**), e per ciascuno è stata costruita la loro *storia calcistica*: tutti gli arbitri che sono stati incontrati durante la carriera. Questo dato senza un'approfondita indagine esplorativa potrebbe sembrare parecchio particolare, poichè i giocatori sono $2\,053$  mentre gli arbitri sono $3\,147$.</p>  
+  
+<p>
+In ciascuna delle $146\,028$ righe è rappresentata una diade arbitro $\sim$ giocatore con i dati di entrambi i soggetti. Per ciascun atleta ci sono sia dati di natura anagrafica: come nome, cognome, data di nascita, peso ed altezza, sia dati di natura calcistica quali numero di partite vinte, perse o pareggiate, numero di cartellini gialli, doppi gialli, cartellini rossi, il numero di partite che sono state disputate dalla coppia e due valutazioni del colore della pelle. Per quanto riguarda l'arbitro invece è stato riportato un numero per l'identificazione univioca (al fine di mantenere l'anonimato), la nazione di provenientza, e due vettori di parametri relativi alla propensione al razzismo della nazione di appartenenza dell'arbitro. Rispettivamente si identificano come IAT ed Exp, e per ciascuno ci sono tre colonne: media, numerosità del campione relativo alla rilevazione ed errore standanrd.</p>
+  
+```{r, include=FALSE}
+data_columns = colnames(data_sporchi)
+```
+
+```{r}
+data_columns
+```
+  
+$\bullet$Sono state eliminate due variabili: il nome esteso di ciascun giocatore (variabile **player**), e **photoID**, poichè non utili ai fini dell'analisi.  
+  
+$\bullet$Il dataset presenta un ampio numero di missing values: **NA**.  
+
+Le variabili affette da questo problema:  
+1) reater1 e reater2: si tratta delle due valutazioni del colore della pelle, intaccate da $21\,407$ NA  
+2) peso e altezza: contavano $753$ valori mancanti  
+3) i valori relativi a IAT ed Exp: con 153 missing  
+4) le posizioni: con $8\,258$ NA  
+$\\$  
+$\bullet$Si tratta di un totale di $30\,221\ missing\ values$. Si è optato per eliminare le righe corrispondenti poichè non è stato trovato un modo ragionevole per imputare i missing.  
+
+**Campionati, squadre, e ruoli**  
+Dalle indagini esplorative si evince che i giocatori fanno parte di $118$ squadre delle massime divisioni di Francia, Inghilterra, Spagna e Germania. Di seguito sono riportate le percentuali con le quali i giocatori si distribuiscono nei vari campionati.
+
+```{r}
+round(table(data_sporchi$leagueCountry)/nrow(data_sporchi), 2) 
+```  
+Ci sono dodici posizioni in campo, è ragionevole pensare che ciascuna per sua natura, sia più o meno soggetta a fare più o meno falli, e di conseguenza a prendere più cartellini. Per esempio un portiere raramente viene ammonito o addirittura espulso, rispetto ad un difensore che si trova alle strette, il quale è portato naturalmente portato a commettere più falli.  
+In seguito questa variabile verrà accorpata in quattro soli livelli al posto che dodici: *portiere*, *difensore*, *centrocampista* e *attaccante*.   
+
+**Cartellini rossi**  
+```{r, include=FALSE}
+table(data_sporchi$redCards)
+```
+Com'è possibile vedere  il **numero di cartellini rossi** è di granlunga **inferiore** al numero di cartellini non assegnati. I casi in cui un arbitro assegna allo stesso giocatore due cartellini rossi(in tutte le partite disputate) sono ancor più rari.
+
+
+
+```{r include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(gridExtra)
+```  
+ 
+```{r, echo=FALSE}
+
+
+g_1 <- ggplot(data=data_sporchi, aes(x=redCards)) + 
+  geom_bar() +
+  labs(
+    x = "Numero di cartellini rossi",
+    y = "Frequenza assoluta",
+    title = "Rossi"
+  )
+
+g_2 <- ggplot(data=data_sporchi, aes(x=yellowReds)) + 
+  geom_bar() +
+  labs(
+    x = "Numero di doppi gialli",
+    y = "Frequenza assoluta",
+    title = "Doppi gialli"
+  )
+
+require(gridExtra)
+plot1 <- g_1
+plot2 <- g_2
+grid.arrange(plot1, plot2, ncol=2)
+
+```
+$\\$  
+
+**E' ragionevole pensare che i cartellini rossi ed i doppi gialli possano essere aggregati in una classe e considerati come eventi rari$_{(4)}$.**  
+  
+$\\$  
+**Colore della Pelle**  
+Questa variabile si presenta in 5 livelli differenti, partendo da $0$ fino ad $1$. Per ciascun giocatore sono stati raccolti due giudizi differenti riguardo la al colore della sua pelle, ciò si traduce con due colonne distinte nel dataset: *rater_1* e *rater_2*. È stata fatta la media per ottenre una variabile rinomianta come **score** che assume $9$ valori fra $0$ ed $1$.  
+Di seguito è riportato il barplot relativo alla frequenza delle diverse *tonalità* di carnagione presenti all'interno del dataset.  
+  
+
+
+```{r, echo=FALSE}
+f_path_2 ='/Users/gabriele.minniti/Desktop/Assignment_solari/data/ready_dataset.csv'
+data <- read.csv(file=f_path_2) #bella li! dati caricati
+```
+```{r}
+ggplot(data=data, aes(x=score)) + 
+  geom_bar(fill=grey.colors(9, start=0.9, end=0.3, gamma = 1.5 )) + 
+  labs(
+    x = "Tonalità del colore della pelle",
+    y = "Frequenza Assoluta",
+    title = "Barplot delle tonalità del colore della pelle dei giocatori"
+  ) + 
+  theme_minimal() 
+```
+  
+É possibile notare che il numero di giocatori con la pelle chiara è decisamene più alto rispetto al numero di giocatori con la pelle scura. Questo rappresenta un elemento di difficoltà per la spiegazione della relazione che ci si è posti come obiettivo, per far fronte a ciò nelle fasi successive dell'anlisi le classi verranno normalizzate.  
+
+- - -   
+  
+<center> <h3> Enrichment del dataset e trasformazioni sulle variabili </h3> </center>  
+
+Il dataset è stato arricchito mediante la creazione di nuove variabili partendo da quelle esistenti.  
+
+**BMI**  
+Il **BMI** o **Indice di Massa Corporea** è una dato biomedico che racchiude al suo interno le variabili **peso** e **altezza**, e da un'idea sul *peso forma* dei giocatori.  
+$$\large{Indice\ di\ Massa\ Corporea\ =} \frac{peso}{altezza^{2}}$$
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data = data) +  #punto è shortcut per oggetto prima! 
+  geom_histogram(aes(x = BMI),  fill = 'gray') +
+  geom_vline(xintercept = 25, size = 1.5) + 
+  labs(
+    x = "BMI",
+    y = "Frequenza assoluta",
+    title = "Istogramma dell'indice di massa corporea dei giocatori"
+  )
+```
+
+Questo semplice grafico mostra la distribuzione dei giocatori secondo il proprio indice di massa corporea. Può trattarsi di un dato utile che influisce in modo indiretto sul numero di cartellini presi da ciascun giocatore. È ragionevole pensare, per esempio, che un difensore in sovrappeso sarà più propenso a commettere un fallo piuttosto che uno in perfetta froma fisica.  
+Il valore 25 è la soglia teorica che distingue la *perfetta forma fisica* rispetto al *leggero sovrappeso*.  
+I dati seguono una distribuzione normale.   
+  
+$\\$
+
+**Età**  
+Partendo dalla variabile **birthday** è stata calcolata l'età del singolo giocatore (**age**). Questo dato contestualizzanto all'interno della metodologia di campionamento risulta molto importante, poichè un attaccante di vent'anni avrà incontrato nella sua carriera sicuramente meno arbitri rispetto ad un portiere di 35.  
+  
+```{r message=FALSE, warning=FALSE}
+ggplot(data = data) +  #punto è shortcut per oggetto prima! 
+  geom_histogram(aes(x = ages, y = ..density..), fill = 'gray') +
+  stat_function(fun = dnorm, args = list(mean=mean(data$ages), sd=sd(data$ages)), colour = 'red', size = 1.5) +
+  labs(
+    x = "Età",
+    y = "Giocatori",
+    title = "Istogramma delle età dei giocatori"
+  )
+```
+
+La distribuzione delle età segue una legge normale.  
+  
+$\\$  
+
+  
+**Posizione in campo**  
+Le posizioni in campo sono state accorpate in quattro *macro-ruoli*:  
+
+* Attaccanti  
+
+* Centrocampisti    
+
+* Difensori  
+
+* Portieri    
+
+
+I ruoli dei giocatori del dataset sono riportati con le rispettive frequenze relative:  
+```{r}
+round(table(data$group_pos)/nrow(data), 2)
+```
+  
+
+  
+Questa variabile assume un ruolo importante rispetto al numero di falli (e di conseguenza di possibili cartellini) che il singolo player può prendere. Segue un grafico a supporto di questa tesi. 
+
+```{r}
+ggplot(data=data[data$all_reds>0,], aes(x=all_reds, fill=group_pos)) + 
+  geom_bar(position = "dodge") + #dodge al posto di fill 
+  labs(
+    x = "Cartellini rossi",
+    y = "Frequenza assoluta",
+    title = "Cartellini e ruoli"
+  ) 
+
+```
+
+- - -     
+
+<center> <h3> Modello </h3> </center>   
+  
+Il modello che è stato stimato si tratta di una **Regressione di Poisson con effetti casuali**.  
+La scelta del modello è dettata dal fatto che per la frequenza di assegnazione i cartellini rossi possono essere considerati un evento raro, ed inoltre gli effetti casuali servono a modellare la variabilità individuale rispetto a ciascuna diade arbitro $\sim$ giocatore   
+  
+<center> <h4> Variable Selection </h4> </center>   
+  
+La selezione delle variabili è stata ragionata in modo da modellare il conteggio dei cartellini rossi e doppi gialli (**all_reds**) mediante le informazioni relative sia al giocatore che all'arbitro.  
+Le variabili incluse nel modello sono:  
+
+* **all_reds**: numero totale di cartellini rossi e doppi gialli assegnati a ciascun giocatore da un particolare arbitro in tutta la loro storia calcistica,  
+
+* **score** variabile che media le due valutazioni relative al colore della pelle,  
+
+* **group_pos**: che identifica la posizione del giocatore in campo.  
+
+* **BMI**: indice di massa corporea, insieme all'età serve a descrivere la componente fisica del giocatore.  
+
+* **ages**: età del giocatre.  
+
+* **leagueCountry**: nazione di appartenenza della squadra dove gioca il soggetto.  
+
+* **meanExp** e **meanIAT**: sono parametri che tengono in considerazione la percezione dei differenti colori della pelle nel paese di provenienza di ciascun arbitro. Sono due indici, il primo è esplicito, ossia viene calcolata la percezione delle *skin-rate* in maniera diretta tramite questionari. Il secondo invece è stato calcolato in maniera indiretta rispetto alle domande presenti nei questionari di campionamento. $_{(5)}$
+
+
+
+  
+
+**Effetti Fissi ed Effetti Casuali**    
+
+* *random effect* relativo a **playerShort**: si tratta di un effetto casuale sull'intercetta, che serve a *sterelizzare* la diversa propensione dei calciatori a ricevere un cartellino rosso (per esempio comportamento in campo, aggressività e fallosità).  
+
+* *random effect* su **refNum**: si tratta del secondo effetto casuale sull'intercetta che serve a *naturalizzare* la diversa propensione degli arbitri a dare cartellini rossi. Questo ci permette di *"pulire"* alcune variabili non direttamente ossrvabili/campionabili come per esempio la serverità di ciascum arbitro. 
+
+* *random effect* del **refNum** su **score**: è un effetto casuale sul coefficiente angolare che permette di tenere in considerazione il fatto che arbitri diversi possono avere una percezione differente del colore della pelle.
+  
+$\\$  
+Siccome il modello è stato costruito senza utilizzare a priori i dati per la selezione delle variabili da includere in esso non è necessario correggere i p-value ottenuti per multiple testing, in quanto, per rispondere al quesito di interesse, occorre fare riferimento solo alla significatività del regressore relativo al colore della pelle(**score**).  
+$\\$  
+
+  
+```{r, echo=FALSE}
+#per evitare nuovamente il fitting del modello ad ogni knit del file, è stato salvato come oggetto .rds e viene ricaricato.
+mod2 <- readRDS("/Users/gabriele.minniti/Desktop/Assignment_solari/modello_2.rds")
+``` 
+
+```{r, echo= TRUE, eval=FALSE}
+df <- data
+
+mod2 <-glmer(all_reds ~  score + group_pos + IBM + meanExp + meanIAT + ages + games + leagueCountry + (1| playerShort ) 
++ (1| refNum) + (score|refNum), family = "poisson" , data = df, nAGQ = 0)  
+
+```
+
+```{r echo=TRUE}
+summary(mod2)
+```  
+    
+È possibile notare che la variabile score non risulta statisticamente significativa. Questo supporta la tesi iniziale che il colore della pelle *non è statisticamente significativo* nello spiegare il numero di cartellini rossi.  
+
+- - -   
+  
+**Test del Chi Quadro**  
+  
+Ciò che si vuole dimostrare in questo paragrafo è che la distribuzione dei cartellini rossi all'interno delle diverse tonalità di pelle segue una distribuzione uniforme.  
+  
+E' necessario costruire delle variabili di supporto prima di andare ad operare il test.  
+$\bullet$ Sono state crate le variabili *x_1* che corrisponde alle proporzioni con cui le diverse etnie si manifestano all'interno dei dati.  
+$\bullet$ La variabile y_1 rappresenta la distribuzione di cartellini normalizzata per il numero totale di cartellini rossi.  
+$\bullet$ Si procede testando la distribuzione delle proporzioni campionarie di colori della pelle normalizzati segua la stessa distribuzione delle proprzioni campionarie delle tonalità della pelle registrate all'inteno del dataset. In altre parole si va a testare il potenziale legame fra la variabile **colore della palle** e **cartellini rossi**.  
+I dati sono stati normalizzati per eliminare l'effetto della differente numerosità con cui sono presenti all'interno del dataset.  
+
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+dati.red <- data[data$redCards > 0,]
+
+x_1 <- table((data$score))/sum(table((data$score))) 
+y_1 <- table((dati.red$score))/sum(table((dati.red$score)))
+
+#print(x_1) --> frequenza relativa dei giocatori per le varie tonalità della pelle! 
+#print(y_1) -->  frequnza relativa dei cartellini per colore dei giocatori
+
+chi <- chisq.test(y_1, p=x_1)
+print(chi)
+```
+Il test ha **p-value = 1**. Ciò significa che *non c'è abbasnza evidenza empirica per rifiutare* l'ipotesi che la distribuzine dei colori della pelle segua la distribuzione dei cartellini. In altre parole facendo il rapporto fra le variabili x ed y idealmente dovrebbe venire un numero molto prossimo ad uno, poichè implica che tale rapporto sia costante. 
+
+
+```{r echo=FALSE}
+obj <- data.frame(ratings=as.numeric(names(x_1)),expected=round(as.vector(chi$expected),1),observed=as.vector(chi$observed))
+
+new_tib<- as.tibble(obj)
+fin_tib_2 = tibble(ratings = rep(new_tib$ratings, 2),
+                 value = c(y_1/(x_1 * sum(y_1/x_1)), rep(1/9, 9)),
+                 variable = c(rep('observed',9), rep('expected',9)))
+fin_tib_2
+```
+Per semplificare la rappresentazione grafica è stata costruita una tabella che ripete sostanzialmente ripete i ratings per le variabile attese e le variabili osservate, e per ciascuna ne riporta i valori derivanti dal test Chi Quadro. Sostanzialmente se la distribuzione dei cartellini rossi fosse uniforme, ciò che ci si aspetta per ogni classe (al netto della numerosità della suddetta) è il valore 1/9 ($0.11\%$), poichè gli arbitri dovrebbero assegnare per ciascun livello di tonalità lo stesso numero di cartellini. 
+```{r}
+ggplot(data=fin_tib_2) + 
+  geom_bar(aes(x=as.factor(ratings), y = value, fill = variable), 
+           position = "dodge", stat = "identity", width = 0.75) +
+  labs(
+    x = "Colore della pelle", 
+    y = "Frequenze normalizzate",
+    title = "Confronto fra frequenze attese e frequenze teoriche"
+  )
+```  
+Nel grafico sono riportati i valori **expected** che sono quelli provenienti da una distribuzione uniforme: ciascuno pari ad $\frac{1}{9}$ mentre gli **observed** sono più variabili, ma idealmente seguono i valori attesi. L'unica eccezione è il valore 0.625 perchè nel dataset sono presenti poco meno di 2000 righe con tale valore. Inoltre se gli arbitri avessero la tendendza ad espellere più i giocatori con la carnagione scura si dobrebbe vedere una tendenza fra i valori osservati ad aumentare partendo da 0 (pelle chiara) fino ad 1 (pelle scura). Questa tendneza non è osservabile in modo netto.  
+
+
+
+- - -  
+
+<center> <h3> Conclusioni </h3> </center>  
+  
+Il test effettuato non permette di rifiutare l'ipotesi che la distribuzine dei cartellini rossi all'interno delle diverse classidi tonalità di colore della pelle sia uniforme.  
+Qualora si teorizzasse di un presunto accanimento degli arbitri con le sanzioni nei confronti dei giocatori con la pelle scura si dobrebbe vedere un trend marcato, cosa che da questo grafico non si evince.  
+Si conclude affermando che gli arbitri non sono più propensi ad espellere giocatori con la pelle scura piuttosto che con quella chiara, ma sembra che mantengano una certa professionalità nello svolgere il loro ruolo. 
+  
+$\\$  
+  
+$\\$  
+  
+$\\$  
+  
+$\\$  
+
+- - -
+  
+$\\$  
+
+$\\$  
+  
+
+<center> <h3> Appendice </h3> </center>   
+  
+<h4> Note </h4>
+
+1) I dati riportati derivano da un articolo del *Corriere dello Sport* del 4-02-2016: [Articolo](http://www.corrieredellosport.it/news/calcio/serie-a/2016/02/04-8180438/razzismo_nel_calcio_da_omolade_a_etoo_i_precedenti/?cookieAccept)  
+  
+2) [Il sito relativo a questo progetto dove sono stati presi i dati ](https://osf.io/gvm2z/)  
+
+3) Questa è una riflessione personale.  
+  
+4) Questo è il motivo principale per il quale si è optato per un modello di conteggio di Poisson.  
+  
+5) Esempio di *domande diretta*: "Cosa ne pensi delle persone di colore?" $\sim$ esempio di *domande indirette*: "Assumeresti una persona con la pelle chiara o con la pelle scura?"  
+  
+
+
+
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  color: Balc;
+  text-align: center;
+}
+h4.author { /* Header 4 - and the author and data headers use this too  */
+    font-size: 18px;
+  color: Black;
+  text-align: center;
+}
+h5.text{
+  font-famiy
+}
+
+</style>
